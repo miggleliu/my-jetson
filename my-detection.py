@@ -55,9 +55,18 @@ net.SetOverlayAlpha(100)
 display = videoOutput("display://0") # 'my_video.mp4' for file
 
 camera = cv2.VideoCapture(0)
-width = camera.get(cv2.CAP_PROP_FRAME_WIDTH)
-height = camera.get(cv2.CAP_PROP_FRAME_HEIGHT)
+width = camera.get(cv2.CAP_PROP_FRAME_WIDTH)    # 640
+height = camera.get(cv2.CAP_PROP_FRAME_HEIGHT)  # 480
 
+# calculate the Field of View (FOV) width using focal length x and resolution width
+fov_width_rad = 2 * np.arctan(width / (2 * f_x))  # 0.830761110661
+fov_width_deg = np.degrees(fov_width_rad)  # 47.5991054245
+
+print("fov width rad = ", fov_width_rad)
+print("fov width deg = ", fov_width_deg)
+
+
+# while loop for video streaming
 while display.IsStreaming():
     
     ret, frame = camera.read()

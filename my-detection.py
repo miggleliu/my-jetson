@@ -49,10 +49,14 @@ distortion_coeffs = np.array([k1, k2, p1, p2, k3])
 
 # set up video
 net = detectNet("ssd-mobilenet-v2", threshold=0.5)
+net.SetOverlayAlpha(100)
+
 #camera = videoSource("/dev/video0")  #csi://0   # '/dev/video0' for V4L2
 display = videoOutput("display://0") # 'my_video.mp4' for file
 
 camera = cv2.VideoCapture(0)
+width = camera.get(cv2.CAP_PROP_FRAME_WIDTH)
+height = camera.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
 while display.IsStreaming():
     
@@ -69,6 +73,16 @@ while display.IsStreaming():
     # Now 'undistorted_frame_cuda' contains the undistorted image on the GPU
     
     detections = net.Detect(undistorted_frame_cuda)
+    detections_filtered = [d for d in detections if d.ClassID == 1]  # ClassID == 1 is for person class
+    for detection in detections_filtered:
+    #    print("Class ID:", detection.ClassID)  # 1 for person
+    #    print("Confidence:", detection.Confidence)
+    #    print("Bounding Box:", detection.Left, detection.Top, detection.Right, detection.Bottom)  # top-left is (0,0), 640*480 max
+
+        width_percentage = (detection.Left + detection.Right)/(2*width)
+        height_percentage = (detection.Top + detection.Bottom)/(2*height)
+        print(width_percentage, height_percentage)
+
     display.Render(undistorted_frame_cuda)
     display.SetStatus("Object Detection | Network {:.0f} FPS".format(net.GetNetworkFPS()))
 

@@ -31,7 +31,7 @@ while True:
             break
 
         # Process the received data (convert it back to integer)
-        received_number = float(received_data)
+        received_number = int(received_data)
         print("Received number:", received_number)
 
     # Close the connection

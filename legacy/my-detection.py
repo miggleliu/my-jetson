@@ -23,7 +23,7 @@
 
 import cv2
 import numpy as np
-from jetson_inference import poseNet
+from jetson_inference import detectNet
 from jetson_utils import videoSource, videoOutput
 from jetson_utils import cudaToNumpy, cudaFromNumpy
 import socket
@@ -49,9 +49,8 @@ distortion_coeffs = np.array([k1, k2, p1, p2, k3])
 
 
 # --- set up video ---
-net = poseNet("resnet18-body", threshold=0.15)
-overlay = "links, keypoints"
-#net.SetOverlayAlpha(100)
+net = detectNet("ssd-mobilenet-v2", threshold=0.5)
+net.SetOverlayAlpha(100)
 
 #camera = videoSource("/dev/video0")  #csi://0   # '/dev/video0' for V4L2
 display = videoOutput("display://0") # 'my_video.mp4' for file
@@ -93,58 +92,19 @@ while display.IsStreaming():
 
     # Now 'undistorted_frame_cuda' contains the undistorted image on the GPU
     
-    #detections = net.Detect(undistorted_frame_cuda)
-    # perform pose estimation (with overlay)
-    poses = net.Process(undistorted_frame_cuda, overlay=overlay)
-
-    # print the pose results
-    print("detected {:d} objects in image".format(len(poses)))
-
-    for pose in poses:
-        print(pose)
-        print(pose.Keypoints)
-        print('Links', pose.Links)
-        # find the keypoint index from the list of detected keypoints
-        right_shoulder_idx = pose.FindKeypoint('right_shoulder')
-        left_shoulder_idx = pose.FindKeypoint('left_shoulder')
-        right_hip_idx = pose.FindKeypoint('right_hip')
-        left_hip_idx = pose.FindKeypoint('left_hip')
-
-        # if the keypoint index is < 0, it means it wasn't found in the image
-
-
-        if left_hip_idx < 0 or left_shoulder_idx < 0:
-            if right_hip_idx > 0 and right_shoulder_idx > 0:
-                right_hip = pose.Keypoints[right_hip_idx]
-                right_shoulder = pose.Keypoints[right_shoulder_idx]
-                size = ((right_shoulder.x - right_hip.x)**2 + (right_shoulder.y - right_hip.y)**2)**0.5
-            else:
-                continue
-        else:
-            if right_hip_idx > 0 and right_shoulder_idx > 0:
-                right_hip = pose.Keypoints[right_hip_idx]
-                right_shoulder = pose.Keypoints[right_shoulder_idx]
-                left_hip = pose.Keypoints[left_hip_idx]
-                left_shoulder = pose.Keypoints[left_shoulder_idx]
-                size = (((left_shoulder.x - left_hip.x)**2 + (left_shoulder.y - left_hip.y)**2)**0.5 + ((right_shoulder.x - right_hip.x)**2 + (right_shoulder.y - right_hip.y)**2)**0.5)/2
-            else:
-                left_hip = pose.Keypoints[left_hip_idx]
-                left_shoulder = pose.Keypoints[left_shoulder_idx]
-                size = ((left_shoulder.x - left_hip.x)**2 + (left_shoulder.y - left_hip.y)**2)**0.5
-        print("size of body is", size)
-
-    #detections_filtered = [d for d in detections if d.ClassID == 1]  # ClassID == 1 is for person class
-    #for detection in detections_filtered:
+    detections = net.Detect(undistorted_frame_cuda)
+    detections_filtered = [d for d in detections if d.ClassID == 1]  # ClassID == 1 is for person class
+    for detection in detections_filtered:
     #    print("Class ID:", detection.ClassID)  # 1 for person
     #    print("Confidence:", detection.Confidence)
     #    print("Bounding Box:", detection.Left, detection.Top, detection.Right, detection.Bottom)  # top-left is (0,0), 640*480 max
 
-    #    width_percentage = "{:.4f}".format((detection.Left + detection.Right)/(2*width))
-    #    height_percentage = "{:.4f}".format((detection.Top + detection.Bottom)/(2*height))
-    #    print("width_precentage = ", width_percentage, "width_precentage = ", height_percentage)
+        width_percentage = "{:.4f}".format((detection.Left + detection.Right)/(2*width))
+        height_percentage = "{:.4f}".format((detection.Top + detection.Bottom)/(2*height))
+        print("width_percentage = ", width_percentage, "height_percentage = ", height_percentage)
 
         # Send the width percentage to receiver
-        sender_socket.send(str(int(size)).encode())
+        sender_socket.send(str(width_percentage).encode())
 
     display.Render(undistorted_frame_cuda)
     display.SetStatus("Object Detection | Network {:.0f} FPS".format(net.GetNetworkFPS()))

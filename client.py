@@ -31,8 +31,15 @@ while True:
             break
 
         # Process the received data (convert it back to integer)
-        received_number = int(received_data)
-        print("Received number:", received_number)
+        angle_valid = int(received_data.split(';')[0])
+        distance_valid = int(received_data.split(';')[1])
+        angle_deg = float(received_data.split(';')[2])  # angle is negative when the human is on the right of the pallet; positive for left side
+        distance = float(received_data.split(';')[3])
+        print("##############################")
+        print("angle_valid:", angle_valid)
+        print("distance_valid:", distance_valid)
+        print("angle_deg:", angle_deg)
+        print("distance:", distance)
 
     # Close the connection
     connection.close()
